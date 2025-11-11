@@ -104,15 +104,13 @@ def load_keypoints_dict(all_pair_speakers):
    # read all poses in f'data/final_poses/poses_{pair}_synced_pp{speaker}.npy'
    processed_keypoints_dict = {}
    mirrored_keypoints_dict = {}
-   for file in tqdm(glob.glob('./data/selected_poses/*.npy'), desc='Loading keypoints...', total=len(glob.glob('./data/selected_poses/*.npy'))):
-      # file format = data/selected_poses/poses_pair04_synced_ppA.npy 
-      pair = file.split('/')[-1].split('_')[1]
-      speaker = file.split('/')[-1].split('_')[-1].split('.')[0][-1]
-      pair_speaker = f"{pair}_{speaker}"
+   # Modify this path to point to your directory of .npy files
+   for file_path in tqdm(glob.glob('./data/my_poses/*.npy'), desc='Loading keypoints...'):
+      pair_speaker = file_path.split('/')[-1].replace('.npy', '')
       if pair_speaker not in all_pair_speakers:
             continue
       try:
-         processed_keypoints_dict[pair_speaker], mirrored_keypoints_dict[pair_speaker] = process_poses(np.load(file)) #np.load(keypoints_path)
+         processed_keypoints_dict[pair_speaker], mirrored_keypoints_dict[pair_speaker] = process_poses(np.load(file_path))
       except Exception as e:
          print(e)
          print('Error in loading the keypoints for the pair:', pair, speaker)

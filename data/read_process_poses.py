@@ -21,6 +21,7 @@ def process_poses(poses):
    # add one dimension to the pose at the end
    poses = np.expand_dims(poses, axis=-1)
    # original shape is T, V, C, M
+   # print(poses.shape)
    T, V, C, M = poses.shape
    poses = np.transpose(poses, (2, 0, 1, 3))
 

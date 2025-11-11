@@ -11,7 +11,7 @@ import dill as pickle
 import re 
 from collections import defaultdict, Counter
 from dialog_utils.data_classes import Turn, Utterance, Gesture
-from dialog_utils.prepare_annotate_dialogues import get_gestures_info, get_turn_info
+# from dialog_utils.prepare_annotate_dialogues import get_gestures_info, get_turn_info
 
 def load_pickle(file_name):
    with open(file_name, 'rb') as reader:

@@ -493,17 +493,17 @@ def main(phase='training'):
 
     loggers = [tb_logger]
 
-    if arg.wandb_entity != "none":
-        experiment_info = vars(arg)
-        project = "CABB_pretraining" if phase == 'training' else "CABB_testing"
-        wandb_logger = WandbLogger(
-            config=experiment_info,
-            entity=arg.wandb_entity,
-            project=project,
-            name=experiment_id,
-            id=experiment_id
-        )
-        loggers.append(wandb_logger)       
+    # if arg.wandb_entity != "none":
+    #     experiment_info = vars(arg)
+    #     # project = "CABB_pretraining" if phase == 'training' else "CABB_testing"
+    #     wandb_logger = WandbLogger(
+    #         config=experiment_info,
+    #         entity=arg.wandb_entity,
+    #         project="first_test",
+    #         name=experiment_id,
+    #         id=experiment_id
+    #     )
+    #     loggers.append(wandb_logger)       
    
     callbacks = [
         # Monitor learning rate during training
