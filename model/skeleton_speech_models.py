@@ -64,7 +64,7 @@ class GSSModel(nn.Module):
             wasserstein_distance=False,
             cross_modal=False,
             dont_pool=False,
-            maxlen=60,
+            maxlen=72,
             multimodal_embeddings_dim=768,
             **kwargs
     ):
@@ -119,7 +119,7 @@ class GSSModel(nn.Module):
                         num_heads=8,
                         mlp_ratio=2,
                         norm_layer=partial(nn.LayerNorm, eps=1e-6),
-                        maxlen=60,
+                        maxlen=72,
                         num_joints=27,
                         multimodal_embeddings_dim=multimodal_embeddings_dim
                     )
@@ -133,7 +133,7 @@ class GSSModel(nn.Module):
                         num_heads=8,
                         mlp_ratio=2,
                         norm_layer=partial(nn.LayerNorm, eps=1e-6),
-                        maxlen=60,
+                        maxlen=72,
                         num_joints=27
                     )
                 self.skeleton_model = ObjectNet(

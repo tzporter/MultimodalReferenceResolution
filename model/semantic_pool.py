@@ -12,11 +12,11 @@ class BertjePoolingModule(LightningModule):
         super().__init__()
         # Load the tokenizer and model
         if use_robbert:
-            self.tokenizer = RobertaTokenizer.from_pretrained("DTAI-KULeuven/robbert-2023-dutch-large")
-            self.bertje_model = RobertaForSequenceClassification.from_pretrained("DTAI-KULeuven/robbert-2023-dutch-large")
+            self.tokenizer = RobertaTokenizer.from_pretrained("FacebookAI/xlm-roberta-large")
+            self.bertje_model = RobertaForSequenceClassification.from_pretrained("FacebookAI/xlm-roberta-large")
         else:
-            self.tokenizer = AutoTokenizer.from_pretrained("jegormeister/bert-base-dutch-cased-snli")
-            self.bertje_model = AutoModel.from_pretrained("jegormeister/bert-base-dutch-cased-snli")
+            self.tokenizer = AutoTokenizer.from_pretrained("google-bert/bert-base-cased")
+            self.bertje_model = AutoModel.from_pretrained("google-bert/bert-base-cased")
         if freeze_bertje:
             for param in self.bertje_model.parameters():
                 param.requires_grad = False

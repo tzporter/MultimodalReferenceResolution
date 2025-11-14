@@ -459,8 +459,8 @@ class CABBFeeder(Dataset):
         number_speech_frames = int(2 * self.audio_sample_rate)
         # add speaker and pair to the item
         speaker_dict = {'A': 0, 'B': 1}
-        item['speaker_ID'] = speaker_dict[pair_speaker.split('_')[1]]
-        item['pair_ID'] = int(pair_speaker.split('_')[0].split('pair')[-1])
+        # item['speaker_ID'] = speaker_dict[pair_speaker.split('_')[1]]
+        # item['pair_ID'] = int(pair_speaker.split('_')[0].split('pair')[-1])
         # add frame_ID to the item
         frame_IDs = np.arange(start_frame, end_frame)
         item['frame_IDs'] = frame_IDs
@@ -567,7 +567,7 @@ if __name__ == '__main__':
         apply_skeleton_augmentations=False,
         task='segmentation',
         random_choose=False,
-        window_size=60,
+        window_size=72,
         phase='eval'
     )
     # get the first item

@@ -1,0 +1,70 @@
+Experiment_name: multimodal-x_{}_lr_{}_batch_{}_temperature_{}_l_semantic
+feeder_args:
+  data_path: './speaker_segments_train.csv'
+  poses_path: data/selected_poses/poses-{}.npy
+  audio_path: data/audio_files/{}_synced_pp{}.wav
+  apply_skeleton_augmentations: True
+  n_views: 2
+  debug: False
+  random_choose: True
+  random_shift: True
+  window_size: 72
+  normalization: True
+  random_mirror: True
+  random_mirror_p: 0.5
+  is_vector: False
+  skeleton_backbone: 'jointsformer'
+  eval_on_small_dataset: False
+  use_only_small_dataset: False
+  
+# model for embeddings
+model_args:
+  modalities: ['skeleton', 'semantic']
+  fusion: 'late'
+  feat_dim: 128
+  w2v2_type: 'multilingual'
+  skeleton_backbone: 'jointsformer'
+  hidden_dim: 256
+  attentive_pooling: False
+  attentive_pooling_skeleton: False
+  bertje_dim: 768
+  freeze_bertje: True
+  loss_types: ['contrastive', 'mm_contrastive'] # ['contrastive', 'mm_contrastive', 'masked_reconstruction', 'vicreg', 'mm_vicreg']
+  cross_modal: True
+  one_branch_cross_modal: True
+  multimodal_embeddings_dim: 768
+  
+
+# augmenation file
+skeleton_augmentations_path: 'configs/augmentations/skeleton_simple_aug.yaml'
+
+# model for audio
+audio_model: model.audio_model.Wav2Vec2
+audio_model_args:
+  w2v2_type: 'multilingual'
+  freeze: True
+
+# training
+# training
+device: -1
+keep_rate: 0.9
+batch_size: 10 #96
+num_epoch: 10
+nesterov: True
+num_workers: 8
+momentum: 0.9
+learning_rate: 0.001
+lr_rate_decay: 0.1
+lr_decay_epochs: 700,800,900
+weight_decay: 0.0001
+# vicreg hyperparameters from the paper
+sim_coeff: 25
+std_coeff: 25
+cov_coeff: 1
+
+
+# general config
+accumulate_grad_batches: 1
+scheduler: 'plateau'
+
+loss_function: 'Combined'

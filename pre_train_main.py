@@ -21,7 +21,7 @@ from collections import defaultdict
 import lightning as L
 import torch
 from lightning.pytorch.loggers import TensorBoardLogger, WandbLogger
-from lightning.pytorch.callbacks import LearningRateMonitor, ModelCheckpoint, ModelSummary
+from lightning.pytorch.callbacks import LearningRateMonitor, ModelCheckpoint, ModelSummary, TQDMProgressBar
 from model.skeleton_speech_models import GSSModel
 from utils.augmentation_utils import Augmenter2D
 from model.losses import (
@@ -509,37 +509,44 @@ def main(phase='training'):
         # Monitor learning rate during training
         LearningRateMonitor(logging_interval='epoch'),
         # Save top 10 models based on "val/correlation" score, checked every epoch
-        ModelCheckpoint(
-            filename="{epoch}-{val/correlation:.2f}",
-            monitor="val/correlation",
-            save_top_k=5,
-            every_n_epochs=1,
-            mode="max"
-        ),
+        # ModelCheckpoint(
+        #     filename="{epoch}-{val/correlation:.2f}",
+        #     monitor="val/correlation",
+        #     save_top_k=5,
+        #     every_n_epochs=1,
+        #     mode="max"
+        # ),
         # Save top 10 models based on "val/difference" score, checked every epoch
+        # ModelCheckpoint(
+        #     filename="{epoch}-{val/difference:.2f}",
+        #     monitor="val/difference",
+        #     save_top_k=5,
+        #     every_n_epochs=1,
+        #     mode="max"
+        # ),
         ModelCheckpoint(
-            filename="{epoch}-{val/difference:.2f}",
-            monitor="val/difference",
+            filename="{epoch}-{val/combined_loss:.2f}",
+            monitor="val/combined_loss",
             save_top_k=5,
             every_n_epochs=1,
             mode="max"
         ),
         # Online evaluation callback for retrieval and similarity tasks. If you want to use this one, please use the correct retrieval and similarity metrics. For now we only use the similarity metric.
-        OnlineEvalCallback(
-            poses,
-            mirrored_poses,
-            audio_dict=audio_dict,
-            every_n_epochs=[4, 1],
-            tasks=["similarity"],
-            skeleton_backbone=arg.model_args['skeleton_backbone'],
-            modalities=modalities,
-        ),
+        # OnlineEvalCallback(
+        #     poses,
+        #     mirrored_poses,
+        #     audio_dict=audio_dict,
+        #     every_n_epochs=[4, 1],
+        #     tasks=["similarity"],
+        #     skeleton_backbone=arg.model_args['skeleton_backbone'],
+        #     modalities=modalities,
+        # ),
         ModelSummary(max_depth=2)
     ]
-
     # TODO: use all parameters either from configs or from opt
     if torch.cuda.is_available():
         # TODO: make mixed-precision optional from configs/opt to avoid errors (bf16)
+
         trainer = L.Trainer(
             # gradient_clip_val=0.25,
             max_epochs=arg.num_epoch,
@@ -550,20 +557,22 @@ def main(phase='training'):
             # accumulate_grad_batches=arg.accumulate_grad_batches,
             callbacks=callbacks,
             strategy="ddp_find_unused_parameters_true",
-            enable_progress_bar=True,
-            # precision="bf16",
+            enable_progress_bar=False,
+            precision="bf16",
             num_sanity_val_steps=2,
             default_root_dir=models_directory+arg.Experiment_name
             # show the progress bar
             )
     else:
+        print("Using CPU trainer...")
         trainer = L.Trainer(
             gradient_clip_val=0.25,
             max_epochs=arg.num_epoch,
             logger=loggers,
-            callbacks=[LearningRateMonitor(logging_interval='epoch')]
+            callbacks=[TQDMProgressBar(refresh_rate=250), LearningRateMonitor(logging_interval='epoch')]
             )
     if phase == 'training':
+        print("Starting training...")
         trainer.fit(model, train_loader, val_loader)
 
 

@@ -100,17 +100,19 @@ def process_poses(poses):
    mirrod_poses = miror_poses(poses.copy())
    return poses, mirrod_poses
        
-def load_keypoints_dict(all_pair_speakers):
+def load_keypoints_dict(all_pair_speakers, selected_keypoints):
    # read all poses in f'data/final_poses/poses_{pair}_synced_pp{speaker}.npy'
    processed_keypoints_dict = {}
    mirrored_keypoints_dict = {}
    # Modify this path to point to your directory of .npy files
-   for file_path in tqdm(glob.glob('./data/my_poses/*.npy'), desc='Loading keypoints...'):
-      pair_speaker = file_path.split('/')[-1].replace('.npy', '')
+   for file_path in tqdm(glob.glob('./data/selected_poses/*.npy'), desc='Loading keypoints...'):
+      pair_speaker = file_path.split('-')[-1].replace('.npy', '')
       if pair_speaker not in all_pair_speakers:
             continue
       try:
-         processed_keypoints_dict[pair_speaker], mirrored_keypoints_dict[pair_speaker] = process_poses(np.load(file_path))
+        # select only keypoints in selected_keypoints
+         selected_poses = np.load(file_path)[:, selected_keypoints, :]
+         processed_keypoints_dict[pair_speaker], mirrored_keypoints_dict[pair_speaker] = process_poses(selected_poses)
       except Exception as e:
          print(e)
          print('Error in loading the keypoints for the pair:', pair, speaker)
@@ -142,7 +144,7 @@ class CABBFeeder(Dataset):
             apply_skeleton_augmentations=True,
             skeleton_augmentations=None,
             random_scale=True,
-            fps=29.97,
+            fps=24,
             speech_buffer=0.5,
             gesture_buffer=0.25,
             apply_speech_augmentations=False,
@@ -155,6 +157,7 @@ class CABBFeeder(Dataset):
             skeleton_backbone='jointsformer',
             eval_on_small_dataset=True,
             train_data=True,
+            selected_keypoints = np.concatenate(([0,5,6,7,8,9,10], [91,95,96,99,100,103,104,107,108,111],[112,116,117,120,121,124,125,128,129,132]), axis=0)
     ):
         """ 
         :param poses_path: path to poses 
@@ -173,6 +176,7 @@ class CABBFeeder(Dataset):
         self.data_path = data_path
         self.poses_path = poses_path
         self.audio_path = audio_path
+        self.selected_keypoints = selected_keypoints
         self.modalities = modalities
         self.phase = phase
         self.apply_speech_augmentations = apply_speech_augmentations
@@ -241,6 +245,9 @@ class CABBFeeder(Dataset):
         # convert start_frames and end_frames to int
         self.data['start_frames'] = self.data['start_frames'].astype(int)
         self.data['end_frames'] = self.data['end_frames'].astype(int)
+        # filter our 0 length gestures
+        self.data = self.data[self.data['end_frames'] >= self.data['start_frames']]
+
         for pair_speaker in self.pairs_speakers:
             # select the rows of the pair_speaker
             data = self.data[self.data['pair_speaker'] == pair_speaker]
@@ -294,6 +301,9 @@ class CABBFeeder(Dataset):
         elif self.data_path.endswith('.pkl'):
             self.data = pd.read_pickle(self.data_path)
         self.data = self.data.reset_index(drop=True)
+        # filter out 0 length gestures
+        # self.data = self.data[self.data['end_frames'].astype(int)-self.data['start_frames'].astype(int) > 100]
+
         if self.eval_on_small_dataset and not self.use_only_small_dataset and self.task != 'segmentation':
             if self.train_data: 
                 if self.data_path.endswith('.csv'):
@@ -309,29 +319,28 @@ class CABBFeeder(Dataset):
             self.data = self.data[self.data["words"] != "0"]
             # Select rows where the number of words in 'words' and 'pos' columns are equal
             self.data['word_count'] = self.data['words'].apply(lambda x: len(str(x).split()))
-            self.data['pos_count'] = self.data['pos'].apply(lambda x: len(str(x).split()))
-            self.data = self.data[self.data['word_count'] == self.data['pos_count']]
+            # self.data['pos_count'] = self.data['pos'].apply(lambda x: len(str(x).split()))
+            # self.data = self.data[self.data['word_count'] == self.data['pos_count']]
             # Filter rows where at least one POS tag is in content_words_pos
-            self.data['has_content'] = self.data['pos'].apply(
-                lambda x: any(pos in content_words_pos for pos in str(x).split())
-            )
-            self.data = self.data[self.data['has_content']]
+            # self.data['has_content'] = self.data['pos'].apply(
+                # lambda x: any(pos in content_words_pos for pos in str(x).split())
+            # )
+            # self.data = self.data[self.data['has_content']]
 
             # Keep only content words in the 'words' column
-            def filter_content_words(words, pos):
-                return ' '.join([word for word, p in zip(words.split(), pos.split()) if p in content_words_pos])
+            # def filter_content_words(words, pos):
+                # return ' '.join([word for word, p in zip(words.split(), pos.split()) if p in content_words_pos])
 
-            self.data['words'] = self.data.apply(lambda row: filter_content_words(row['words'], row['pos']), axis=1)
+            # self.data['words'] = self.data.apply(lambda row: filter_content_words(row['words'], row['pos']), axis=1)
 
             # Remove rows where all words have been filtered out
-            self.data = self.data[self.data['words'] != '']
+            # self.data = self.data[self.data['words'] != '']
 
             # Drop the temporary column used for filtering
-            self.data = self.data.drop(columns=['has_content', 'word_count', 'pos_count'])
+            # self.data = self.data.drop(columns=['has_content', 'word_count', 'pos_count'])
             
             # reindex the data
             self.data = self.data.reset_index(drop=True)
-            print(self.data.shape)
         # convert from_ts and to_ts to frames
         self.data = self.data.reset_index(drop=True)
         if self.debug:
@@ -339,7 +348,7 @@ class CABBFeeder(Dataset):
             self.data = self.data[self.data['pair_speaker'] == 'pair04_A']
         self.pairs_speakers = self.data['pair_speaker'].unique()
         self.poses = {}
-        self.poses, self.mirrored_poses = load_keypoints_dict(self.pairs_speakers)
+        self.poses, self.mirrored_poses = load_keypoints_dict(self.pairs_speakers, self.selected_keypoints)
         # select only poses of the pairs in the data
         self.poses = {pair_speaker: self.poses[pair_speaker] for pair_speaker in self.pairs_speakers}
         self.mirrored_poses = {pair_speaker: self.mirrored_poses[pair_speaker] for pair_speaker in self.pairs_speakers}
@@ -458,9 +467,9 @@ class CABBFeeder(Dataset):
                 item['utterance'] = row['words']
             elif row['words'] and isinstance(row['words'], str):
                 speech = row['words'].split()
-                pos_seq = row['pos'].split()
-                assert len(speech) == len(pos_seq)
-                content_words = ' '.join([speech[i] for i in range(len(speech)) if pos_seq[i] in content_words_pos])
+                # pos_seq = row['pos'].split()
+                # assert len(speech) == len(pos_seq)
+                content_words = ' '.join(speech)
                 item['utterance'] = content_words
             else:
                 item['utterance'] = 'geen speech'
@@ -482,22 +491,24 @@ class CABBFeeder(Dataset):
         number_speech_frames = int(2 * self.audio_sample_rate)
         # add speaker and pair to the item
         speaker_dict = {'A': 0, 'B': 1}
-        item['speaker_ID'] = speaker_dict[pair_speaker.split('_')[1]]
-        item['pair_ID'] = int(pair_speaker.split('_')[0].split('pair')[-1])
+        # item['speaker_ID'] = speaker_dict[pair_speaker.split('_')[1]]
+        # item['pair_ID'] = int(pair_speaker.split('_')[0].split('pair')[-1])
         # add frame_ID to the item
         frame_IDs = np.arange(start_frame, end_frame)
+        assert len(frame_IDs) >= 30, (start_frame, end_frame)
         item['frame_IDs'] = frame_IDs
         if "skeleton" in self.modalities:
             # select either the original or the mirrored poses
             if self.random_mirror and random.random() > self.random_mirror_p:
+                assert np.array(self.mirrored_poses[pair_speaker]).shape[1] > end_frame, (pair_speaker, self.mirrored_poses[pair_speaker].shape, end_frame)
                 skeleton_data = self.mirrored_poses[pair_speaker][:, start_frame:end_frame, :, :]  
             else:
+                assert np.array(self.poses[pair_speaker]).shape[1] > end_frame, (pair_speaker, self.poses[pair_speaker].shape, end_frame)
                 skeleton_data = self.poses[pair_speaker][:, start_frame:end_frame, :, :]          
             item["skeleton"] = {}
             # skeleton_data = self.data[index]
             skeleton_data_numpy = np.array(skeleton_data)
             if self.crop_scale:
-                # print(skeleton_data_numpy.shape)
                 skeleton_data_numpy = np.transpose(skeleton_data_numpy, (3, 1, 2, 0))
                 # skeleton_data_numpy = crop_scale(skeleton_data_numpy)
                 skeleton_data_numpy = np.transpose(skeleton_data_numpy, (3, 1, 2, 0))
@@ -516,7 +527,7 @@ class CABBFeeder(Dataset):
                     skeleton_data_numpy[1, :, :, :] = skeleton_data_numpy[1, :, :, :] \
                         - skeleton_data_numpy[1, :, 0, 0].mean(axis=0)
             item["skeleton"]["orig"] = skeleton_data_numpy
-
+            # assert skeleton_data_numpy.shape[1]>=30, (skeleton_data_numpy.shape)
             # skeleton data augmentation and view2 generation
             if self.apply_skeleton_augmentations:
                 skeleton_data_numpy_1 = np.array(self.augment_skeleton(
@@ -532,6 +543,7 @@ class CABBFeeder(Dataset):
                     skeleton_data_numpy_2 = np.array(self.augment_skeleton(
                         torch.tensor(skeleton_data_numpy).float(),
                         self.skeleton_augmentations))
+                    
                     item["skeleton"]["view2"] = skeleton_data_numpy_2
                     if self.skeleton_backbone != 'stgcn':
                         item["skeleton"]["view2"] = torch.FloatTensor(
@@ -590,7 +602,7 @@ if __name__ == '__main__':
         apply_skeleton_augmentations=False,
         task='segmentation',
         random_choose=False,
-        window_size=60,
+        window_size=72,
         phase='eval'
     )
     # get the first item

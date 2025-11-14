@@ -83,11 +83,11 @@ def manual_implementation_object_retrieval(jointsformer,
     #      start_frame -= 2
     #      end_frame += 2
     
-      if end_frame - start_frame > 60:
-         # Choose the middle 60 frames; this is because the model expects 60 frames
-         shift = (end_frame - start_frame - 60) // 2
+      if end_frame - start_frame > 72:
+         # Choose the middle 72 frames; this is because the model expects 72 frames
+         shift = (end_frame - start_frame - 72) // 2
          start_index = shift
-         end_index = start_index + 60
+         end_index = start_index + 72
       else:
          start_index = 0
          end_index = end_frame - start_frame

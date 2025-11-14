@@ -181,11 +181,11 @@ def manual_implementation_object_retrieval(jointsformer,
       if end_frame - start_frame < 2:
          start_frame -= 2
          end_frame += 2
-      if end_frame - start_frame > 60:
-         # Choose the middle 60 frames; this is because the model expects 60 frames
-         shift = (end_frame - start_frame - 60) // 2
+      if end_frame - start_frame > 72:
+         # Choose the middle 72 frames; this is because the model expects 72 frames
+         shift = (end_frame - start_frame - 72) // 2
          start_frame += shift
-         end_frame = start_frame + 60
+         end_frame = start_frame + 72
 
       pair_speaker = f"{pair}_{speaker}"
       skel = processed_keypoints_dict[pair_speaker][:, start_frame:end_frame, :, :]

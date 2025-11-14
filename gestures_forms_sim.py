@@ -6,7 +6,7 @@ import glob
 import torch 
 data_path='data/gesture_form_similarity_coding.csv'
 selected = np.concatenate(([0,5,6,7,8,9,10], [91,95,96,99,100,103,104,107,108,111],[112,116,117,120,121,124,125,128,129,132]), axis=0)
-max_frame = 60
+max_frame = 72
 num_joints = 27
 num_channels = 3
 max_body_true = 1
@@ -185,12 +185,11 @@ def measure_sim_gestures(sup_model, processed_keypoints_dict, mirrored_keypoints
             if end_frame - start_frame < 2:
                end_frame = end_frame + 2
                start_frame = start_frame - 2
-            if end_frame - start_frame > 60: ## if the gesture is too long, we choose the middle 60 frames
-               # choose the middle 60 frames
-               start_frame = start_frame + (end_frame - start_frame - 60) // 2
-               end_frame = start_frame + 60
-            
-            
+            if end_frame - start_frame > 72: ## if the gesture is too long, we choose the middle 72 frames
+               # choose the middle 72 frames
+               start_frame = start_frame + (end_frame - start_frame - 72) // 2
+               end_frame = start_frame + 72
+
             pair_speaker = pair+'_'+speaker
             from_ts = start_frame/29.97
             to_ts = end_frame/29.97

@@ -6,7 +6,7 @@ import glob
 import torch 
 data_path='data/gesture_form_similarity_coding.csv'
 selected = np.concatenate(([0,5,6,7,8,9,10], [91,95,96,99,100,103,104,107,108,111],[112,116,117,120,121,124,125,128,129,132]), axis=0)
-max_frame = 60
+max_frame = 72
 num_joints = 27
 num_channels = 3
 max_body_true = 1
