@@ -300,7 +300,7 @@ class CABBFeeder(Dataset):
             self.data['end_frames'] = self.data['to_ts'] * self.fps
         elif self.data_path.endswith('.pkl'):
             self.data = pd.read_pickle(self.data_path)
-        self.data = self.data.reset_index(drop=True)
+        self.data = self.data.sample(frac=1, random_state=42).reset_index(drop=True)
         # filter out 0 length gestures
         # self.data = self.data[self.data['end_frames'].astype(int)-self.data['start_frames'].astype(int) > 100]
 

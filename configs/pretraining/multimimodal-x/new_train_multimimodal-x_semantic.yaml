@@ -46,10 +46,11 @@ audio_model_args:
 
 # training
 # training
+checkpoint_path: 'pretrained_models/multimodal-x_skeleton_text_correlation=0.30.ckpt'
 device: -1
 keep_rate: 0.9
 batch_size: 10 #96
-num_epoch: 10
+num_epoch: 100
 nesterov: True
 num_workers: 8
 momentum: 0.9

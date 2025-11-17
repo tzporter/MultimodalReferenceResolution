@@ -7,6 +7,10 @@ import torch.optim as optim
 from torch.utils.data import Dataset, DataLoader
 from sklearn.metrics import precision_score, recall_score, f1_score, accuracy_score, confusion_matrix
 from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LogisticRegression
+from sklearn.svm import SVC
+from sklearn.ensemble import RandomForestClassifier
+
 
 
 def fix_seeds(seed=42):
@@ -94,6 +98,10 @@ def run_binary_classification(
     criterion = nn.BCEWithLogitsLoss()
     optimizer = optim.Adam(model.parameters(), lr=lr)
 
+    # Track best model
+    best_val_loss = float('inf')
+    best_model_path = 'best_binary_model.pt'
+
     # Training loop
     for epoch in range(epochs):
         model.train()
@@ -115,7 +123,18 @@ def run_binary_classification(
                 loss = criterion(logits, batch_y)
                 val_loss += loss.item() * batch_X.size(0)
         val_loss /= len(val_dataset)
-        print(f"Epoch {epoch+1}/{epochs}, Train Loss: {epoch_loss:.4f}, Val Loss: {val_loss:.4f}")
+        
+        # Save best model
+        if val_loss < best_val_loss:
+            best_val_loss = val_loss
+            torch.save(model.state_dict(), best_model_path)
+            print(f"Epoch {epoch+1}/{epochs}, Train Loss: {epoch_loss:.4f}, Val Loss: {val_loss:.4f} (Best model saved)")
+        else:
+            print(f"Epoch {epoch+1}/{epochs}, Train Loss: {epoch_loss:.4f}, Val Loss: {val_loss:.4f}")
+
+    # Load best model for evaluation
+    model.load_state_dict(torch.load(best_model_path))
+    print(f"Loaded best model with validation loss: {best_val_loss:.4f}")
 
     # Evaluation
     model.eval()
@@ -153,31 +172,36 @@ if __name__ == '__main__':
     # y = df['labels'].values
 
     # Example placeholder data:
-    gestures_info_exploded = pd.read_pickle("data/parent_gesture_embeddings.pkl").dropna(subset=['unimodal_skeleton', 'is_present']).sample(frac=1, random_state=42).reset_index(drop=True)
-    X = gestures_info_exploded['unimodal_skeleton'].to_numpy()
-    iter = 0
-    for row in range(X.shape[0]):
-        if X[row].shape[0] != 256:
-            iter+=1
-    print(f"Number of incorrect embedding sizes: {iter}")
+    df = pd.read_pickle("data/parent_gesture_embeddings.pkl")
+    
+    gestures_info_exploded = df.dropna(subset=['multimodal-x-skeleton-semantic', 'is_present']).sample(frac=1, random_state=42).reset_index(drop=True)
+    X = gestures_info_exploded['multimodal-x-skeleton-semantic'].to_numpy()
+    # iter = 0
+    # for row in range(X.shape[0]):
+        # if X[row].shape[0] != 256:
+            # iter+=1
+    # print(f"Number of incorrect embedding sizes: {iter}")
     # Filter out incorrect sizes
-    mesh = np.array([X[row].shape[0] == 256 for row in range(X.shape[0])])
+    # mesh = np.array([X[row].shape[0] == 256 for row in range(X.shape[0])])
     # shuffle the train mesh
-    X = X[mesh]
+    # X = X[mesh]
+    train_chs = pd.read_csv("speaker_segments_train.csv")["pair_speaker"].to_numpy()
+    test_chs = pd.read_csv("speaker_segments_test.csv")["pair_speaker"].to_numpy()
+    test_chs, val_chs = train_test_split(test_chs, test_size=0.2, random_state=42) # 0.1667 * 0.85 = 0.14285
     X = np.stack(X, axis=0).astype(np.float32).squeeze()
-    y = gestures_info_exploded['is_present'].to_numpy()[mesh]
+    y = gestures_info_exploded['is_present'].to_numpy() # [mesh]
     # Split into train and test sets
-    chapters = gestures_info_exploded['chapter'].to_numpy()[mesh]
-    train_mesh = chapters <= "ch30"
-    val_mesh = (chapters > "ch30") & (chapters <= "ch35")
-    test_mesh = chapters > "ch35"
+    chapters = gestures_info_exploded['pair_speaker'].to_numpy() # [mesh]
+    train_mesh = np.isin(chapters, train_chs)
+    val_mesh = np.isin(chapters, val_chs)
+    test_mesh = np.isin(chapters, test_chs)
     print(train_mesh)
     X_train, X_val, X_test = X[train_mesh], X[val_mesh], X[test_mesh]
     y_train, y_val, y_test = y[train_mesh], y[val_mesh], y[test_mesh]
 
-    print(f"Data shape: X_train: {X_train.shape}, X_test: {X_test.shape}")
-    print(f"Labels shape: y_train: {y_train.shape}, y_test: {y_test.shape}")
-    print(gestures_info_exploded['is_present'][mesh][test_mesh].value_counts())
+    print(f"Data shape: X_train: {X_train.shape}, X_val: {X_val.shape}, X_test: {X_test.shape}")
+    # print(f"Labels shape: y_train: {y_train.shape}, y_test: {y_test.shape}")
+    # print(gestures_info_exploded['is_present'][test_mesh].value_counts()) # [mesh]
     # num_samples = 1000
     # embedding_dim = 256 # Should match your model's output
     # X = np.random.rand(num_samples, embedding_dim * 2).astype(np.float32)
@@ -191,8 +215,52 @@ if __name__ == '__main__':
         y_train=y_train,
         y_val=y_val,
         y_test=y_test,
-        hidden_dims=[100, 20, 5],
-        epochs=10,
+        hidden_dims=[50, 25, 10],
+        epochs=50,
         batch_size=32,
         lr=0.001,
     )
+    lr_model = LogisticRegression(max_iter=1000)
+    lr_model.fit(X_train, y_train)
+    test_preds = lr_model.predict(X_test)
+    accuracy = accuracy_score(y_test, test_preds)
+    precision = precision_score(y_test, test_preds)
+    recall = recall_score(y_test, test_preds)
+    f1 = f1_score(y_test, test_preds)
+    print("------------")
+    print("Logistic Regression Results:")
+    print(f"Accuracy: {accuracy:.4f}")
+    print(f"Precision: {precision:.4f}")
+    print(f"Recall: {recall:.4f}")
+    print(f"F1-Score: {f1:.4f}")
+    print(confusion_matrix(y_test, test_preds))
+
+    rf_model = RandomForestClassifier(n_estimators=100, random_state=42)
+    rf_model.fit(X_train, y_train)
+    test_preds = rf_model.predict(X_test)
+    accuracy = accuracy_score(y_test, test_preds)
+    precision = precision_score(y_test, test_preds)
+    recall = recall_score(y_test, test_preds)
+    f1 = f1_score(y_test, test_preds)
+    print("------------")
+    print("Random Forest Results:")
+    print(f"Accuracy: {accuracy:.4f}")
+    print(f"Precision: {precision:.4f}")
+    print(f"Recall: {recall:.4f}")
+    print(f"F1-Score: {f1:.4f}")
+    print(confusion_matrix(y_test, test_preds))
+
+    svc_model = SVC()
+    svc_model.fit(X_train, y_train)
+    test_preds = svc_model.predict(X_test)
+    accuracy = accuracy_score(y_test, test_preds)
+    precision = precision_score(y_test, test_preds)
+    recall = recall_score(y_test, test_preds)
+    f1 = f1_score(y_test, test_preds)
+    print("------------")
+    print("SVC Results:")
+    print(f"Accuracy: {accuracy:.4f}")
+    print(f"Precision: {precision:.4f}")
+    print(f"Recall: {recall:.4f}")
+    print(f"F1-Score: {f1:.4f}")
+    print(confusion_matrix(y_test, test_preds))

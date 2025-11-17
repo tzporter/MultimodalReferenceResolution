@@ -258,6 +258,14 @@ class SpeechSkeletonModel(L.LightningModule):
                 representations=representations,
                 reconstruction=reconstruction,
             )
+            # print(f"features keys: {features.keys()}")
+            # for feature in features.keys():
+            #     print(f"Feature: {feature}")
+            #     print(type(features[feature]))
+            #     if type(features[feature]) == torch.Tensor:
+            #         print(f"{feature} shape: {features[feature].shape}")
+            #         print(f"{feature} 0: {features[feature][0, :20]}")
+            #     print("---------")
             skeleton_features = features.get("skeleton_features", None)
             speech_features = features.get("speech_features", None)
             semantic_features = features.get("semantic_features", None)
@@ -409,8 +417,14 @@ class SpeechSkeletonModel(L.LightningModule):
         print('Current epoch: {}'.format(self.current_epoch))
         print('Current lr: {}'.format(self.optimizer.param_groups[0]['lr']))
         print('current loss is {}'.format(self.trainer.callback_metrics['train/combined_loss']))
+        try:
+            print('current val loss is {}'.format(self.trainer.callback_metrics['val/combined_loss']))
+        except:
+            pass
 
     def on_test_epoch_end(self, outputs=None) -> None:
+        print('end of test epoch')
+        print('current loss is {}'.format(self.trainer.callback_metrics['val/combined_loss']))
         pass
 
     def configure_optimizers(self):
@@ -441,6 +455,8 @@ def main(phase='training'):
         with open(p.config, 'r') as f:
                 default_arg = yaml.load(f, Loader=yaml.FullLoader)
         key = vars(p).keys()
+        key = set(key)
+        key.add('checkpoint_path')
         for k in default_arg.keys():
                 if k not in key:
                     print('WRONG ARG: {}'.format(k))
@@ -484,7 +500,12 @@ def main(phase='training'):
     )
 
     models_directory = 'workdir/'
-    model = SpeechSkeletonModel(arg)
+    try:
+        model = SpeechSkeletonModel.load_from_checkpoint(arg.checkpoint_path, arg=arg)
+        print(f"Loaded model from checkpoint: {arg.checkpoint_path}")
+    except:
+        model = SpeechSkeletonModel(arg)
+        print("Initialized new model.")
 
     # convert the list of modalities to a string
     logger_name = arg.Experiment_name.format("_".join(modalities), arg.learning_rate, arg.batch_size, arg.temp)
@@ -529,7 +550,7 @@ def main(phase='training'):
             monitor="val/combined_loss",
             save_top_k=5,
             every_n_epochs=1,
-            mode="max"
+            mode="min"
         ),
         # Online evaluation callback for retrieval and similarity tasks. If you want to use this one, please use the correct retrieval and similarity metrics. For now we only use the similarity metric.
         # OnlineEvalCallback(
