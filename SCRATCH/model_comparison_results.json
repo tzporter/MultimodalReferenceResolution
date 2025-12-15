@@ -1,0 +1,50 @@
+{
+  "neural_network": {
+    "train_accuracy": 0.5283242474520028,
+    "val_accuracy": 0.557889255337615,
+    "precision": 0.537814113787346,
+    "recall": 0.557889255337615,
+    "confusion_matrix": [
+      [
+        725,
+        1671
+      ],
+      [
+        876,
+        2489
+      ]
+    ]
+  },
+  "svm": {
+    "train_accuracy": 0.710417160464565,
+    "val_accuracy": 0.5761152577677486,
+    "precision": 0.5404765317888233,
+    "recall": 0.5761152577677486,
+    "confusion_matrix": [
+      [
+        342,
+        2054
+      ],
+      [
+        388,
+        2977
+      ]
+    ]
+  },
+  "random_forest": {
+    "train_accuracy": 1.0,
+    "val_accuracy": 0.5691720187467454,
+    "precision": 0.5254062410472122,
+    "recall": 0.5691720187467454,
+    "confusion_matrix": [
+      [
+        307,
+        2089
+      ],
+      [
+        393,
+        2972
+      ]
+    ]
+  }
+}
